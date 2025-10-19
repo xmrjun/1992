@@ -51,5 +51,14 @@ temp/
 *.db
 *.sqlite
 
+# Trading data (contains account info)
+data/
+*.backup-*
+
 # Coverage directory used by tools like istanbul
 coverage/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo

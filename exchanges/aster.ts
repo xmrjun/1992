@@ -244,6 +244,13 @@ export class Aster {
     private klineSymbol: string = '';
     private klineInterval: string = '';
     private pollingIntervalId?: ReturnType<typeof setInterval>;
+
+    // 🔥 新增 WebSocket 回调支持
+    private bookTickerUpdateCallbacks: Array<(data: any) => void> = [];
+    private markPriceUpdateCallbacks: Array<(data: any) => void> = [];
+    private aggTradeUpdateCallbacks: Array<(data: any) => void> = [];
+    private lastBookTicker: any = null;
+    private lastMarkPrice: any = null;
     constructor(private readonly apiKey: string, private readonly apiSecret: string, defaultMarket: string = 'BTCUSDT') {
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
@@ -307,6 +314,49 @@ export class Aster {
                                 if (this.lastKlines.length > 100) this.lastKlines.shift();
                             }
                             this.klineUpdateCallbacks.forEach(cb => cb(this.lastKlines));
+                        }
+
+                        // 🔥 处理 bookTicker 推送
+                        if (data.e === 'bookTicker') {
+                            this.lastBookTicker = {
+                                symbol: data.s,
+                                bidPrice: data.b,
+                                bidQty: data.B,
+                                askPrice: data.a,
+                                askQty: data.A,
+                                updateTime: data.E
+                            };
+                            this.bookTickerUpdateCallbacks.forEach(cb => cb(this.lastBookTicker));
+                        }
+
+                        // 🔥 处理 markPrice 推送
+                        if (data.e === 'markPriceUpdate') {
+                            this.lastMarkPrice = {
+                                symbol: data.s,
+                                markPrice: data.p,
+                                indexPrice: data.i,
+                                fundingRate: data.r,
+                                nextFundingTime: data.T,
+                                updateTime: data.E
+                            };
+                            this.markPriceUpdateCallbacks.forEach(cb => cb(this.lastMarkPrice));
+                        }
+
+                        // 🔥 处理聚合交易推送
+                        if (data.e === 'aggTrade') {
+                            const aggTrade = {
+                                eventType: data.e,
+                                eventTime: data.E,
+                                symbol: data.s,
+                                aggTradeId: data.a,
+                                price: data.p,
+                                quantity: data.q,
+                                firstTradeId: data.f,
+                                lastTradeId: data.l,
+                                tradeTime: data.T,
+                                isBuyerMaker: data.m
+                            };
+                            this.aggTradeUpdateCallbacks.forEach(cb => cb(aggTrade));
                         }
                     } catch (e) {
                         // 非法 json 忽略
@@ -1116,6 +1166,36 @@ export class Aster {
         }
     }
 
+    // 🔥 订阅并推送 BookTicker（最优挂单价格）
+    public watchBookTicker(symbol: string, cb: (data: any) => void) {
+        this.bookTickerUpdateCallbacks.push(cb);
+        const channel = `${symbol.toLowerCase()}@bookTicker`;
+        this.subscribe({ params: [channel], id: Math.floor(Math.random() * 10000) });
+
+        // 如果已有缓存数据，立即推送
+        if (this.lastBookTicker && this.lastBookTicker.symbol === symbol) {
+            cb(this.lastBookTicker);
+        }
+    }
+
+    // 🔥 订阅并推送 MarkPrice（标记价格）
+    public watchMarkPrice(symbol: string, cb: (data: any) => void) {
+        this.markPriceUpdateCallbacks.push(cb);
+        const channel = `${symbol.toLowerCase()}@markPrice`;
+        this.subscribe({ params: [channel], id: Math.floor(Math.random() * 10000) });
+
+        // 如果已有缓存数据，立即推送
+        if (this.lastMarkPrice && this.lastMarkPrice.symbol === symbol) {
+            cb(this.lastMarkPrice);
+        }
+    }
+
+    // 🔥 订阅并推送聚合交易流（Aggregated Trades）
+    public watchAggTrade(symbol: string, cb: (data: any) => void) {
+        this.aggTradeUpdateCallbacks.push(cb);
+        this.subscribeAggregatedTrade(symbol);
+    }
+
     // 格式化 http k线数组
     private formatKlineArray(arr: any[]): AsterKline {
         return {
@@ -1173,7 +1253,8 @@ export class Aster {
                 this.accountUpdateCallbacks.forEach(cb => cb(this.accountSnapshot));
 
                 // 2. 轮询挂单信息
-                const openOrders = await this.getOpenOrders({ symbol: this.defaultMarket });
+                const openOrdersResponse = await this.getOpenOrders({ symbol: this.defaultMarket });
+                const openOrders = Array.isArray(openOrdersResponse) ? openOrdersResponse : [];
                 // 不clear，直接用新数据替换Map内容
                 // 先删除Map中已不在新列表的订单
                 const newOrderIds = new Set(openOrders.map((o: any) => o.orderId));

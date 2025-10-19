@@ -11,6 +11,8 @@
     "start": "tsx trendV2.ts",
     "maker": "tsx maker.ts",
     "trend": "tsx trendV2.ts",
+    "edgex": "tsx edgex-aster-bot.ts",
+    "paradex": "tsx paradex-trading-bot.ts",
     "test": "vitest run",
     "cli:start": "tsx cli.ts start",
     "cli:log": "tsx cli.ts log",
@@ -22,6 +24,10 @@
   "license": "ISC",
   "packageManager": "pnpm@10.11.1",
   "dependencies": {
+    "@paradex/sdk": "^0.6.0",
+    "@scure/starknet": "^2.0.0",
+    "@starkware-industries/starkex-js": "^0.1.0",
+    "@types/elliptic": "^6.4.18",
     "axios": "^1.8.4",
     "bs58": "^6.0.0",
     "ccxt": "^4.4.88",
@@ -29,13 +35,19 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.0",
     "dotenv": "^16.5.0",
+    "elliptic": "^6.6.1",
+    "keccak": "^3.0.4",
+    "node-fetch": "^3.3.2",
     "ora": "^8.2.0",
+    "starknet": "^5.24.3",
     "tweetnacl": "^1.0.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^22.15.30",
+    "@types/node": "^22.18.8",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.2"
   }
 }
